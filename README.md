@@ -44,4 +44,4 @@ Built by a 4-person student team based in India.
 MIT — open science, open data.
 
 ## System Architecture
-![System Architecture](docs/your-image-filename.png)
+![System Architecture](docs/System Architecture/system architecture.png)
