@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Bhumi-Drishti — 1U CubeSat with On-Board AI</title>
+<meta name="description" content="Bhumi-Drishti: a student-built 1U CubeSat platform with a Teensy 4.1 flight computer, Raspberry Pi on-board AI, and LoRa telemetry — flown on high-altitude balloons.">
+<style>
+:root{
+  --bg:#05080f;
+  --bg-2:#080d18;
+  --panel:#0c1424;
+  --panel-2:#101a2e;
+  --line:#1b2a45;
+  --line-2:#25395c;
+  --text:#dbe6f5;
+  --muted:#8ba0c0;
+  --dim:#5f7593;
+  --cyan:#3ddcff;
+  --cyan-dim:#1d7f9b;
+  --amber:#ffb547;
+  --green:#4ade80;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 500px at 78% -8%, rgba(61,220,255,.10), transparent 62%),
+    radial-gradient(700px 420px at 8% 12%, rgba(255,181,71,.055), transparent 60%);
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* grid overlay */
+.gridlines{
+  position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(61,220,255,.045) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(61,220,255,.045) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),transparent 78%);
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),transparent 78%);
+}
+
+/* ---- nav ---- */
+nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(5,8,15,.82);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:13px;letter-spacing:.13em;text-transform:uppercase;color:var(--text)}
+.brand:hover{text-decoration:none}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.navlinks{display:flex;gap:26px;font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase}
+.navlinks a{color:var(--muted)}
+.navlinks a:hover{color:var(--cyan);text-decoration:none}
+.menubtn{display:none;background:none;border:1px solid var(--line-2);color:var(--muted);font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:4px;cursor:pointer}
+
+/* ---- hero ---- */
+header{padding:104px 0 88px;border-bottom:1px solid var(--line)}
+.tag{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cyan);border:1px solid var(--cyan-dim);border-radius:999px;
+  padding:5px 14px;margin-bottom:26px;background:rgba(61,220,255,.06);
+}
+h1{
+  font-size:clamp(2.6rem,6.4vw,4.5rem);line-height:1.03;letter-spacing:-.03em;
+  font-weight:700;margin-bottom:6px;
+}
+h1 .sub{display:block;font-size:clamp(1rem,2.1vw,1.35rem);font-weight:400;color:var(--cyan);letter-spacing:.01em;margin-top:16px;line-height:1.45}
+.lede{max-width:60ch;color:var(--muted);font-size:1.06rem;margin-top:26px}
+.cta{display:flex;flex-wrap:wrap;gap:13px;margin-top:38px}
+.btn{
+  font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  padding:12px 22px;border-radius:5px;border:1px solid var(--line-2);color:var(--text);
+  transition:.18s;
+}
+.btn:hover{text-decoration:none;border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);color:#04121a;border-color:var(--cyan);font-weight:600}
+.btn.primary:hover{background:#7ce8ff;border-color:#7ce8ff;color:#04121a}
+
+/* readout strip */
+.readout{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:54px;
+}
+.readout div{background:var(--panel);padding:20px 22px}
+.readout .k{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.readout .v{font-family:var(--mono);font-size:1.45rem;color:var(--cyan);margin-top:7px;letter-spacing:-.01em}
+.readout .n{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ---- sections ---- */
+section{padding:88px 0;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.19em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;display:flex;align-items:center;gap:11px}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--cyan-dim)}
+h2{font-size:clamp(1.8rem,3.6vw,2.5rem);letter-spacing:-.022em;line-height:1.15;margin-bottom:18px;font-weight:650}
+h3{font-size:1.16rem;letter-spacing:-.01em;margin-bottom:10px;font-weight:600}
+.intro{max-width:66ch;color:var(--muted);margin-bottom:44px}
+p+p{margin-top:14px}
+
+/* stage cards */
+.stages{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.stage{
+  background:linear-gradient(160deg,var(--panel),var(--bg-2));
+  border:1px solid var(--line);border-radius:10px;padding:30px;position:relative;overflow:hidden;
+}
+.stage::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),transparent)}
+.stage.two::after{background:linear-gradient(90deg,var(--amber),transparent)}
+.stage .num{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
+.stage.two .num{color:var(--amber)}
+.stage h3{margin-top:10px;font-size:1.35rem}
+.stage p{color:var(--muted);font-size:.95rem}
+.spec{list-style:none;margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.spec li{display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:.88rem;border-bottom:1px dashed rgba(27,42,69,.7)}
+.spec li:last-child{border-bottom:none}
+.spec .lbl{color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.spec .val{text-align:right;font-family:var(--mono);font-size:.83rem;color:var(--text)}
+
+/* architecture flow */
+.flow{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.node{
+  border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:7px;
+  background:var(--panel);padding:16px 20px;
+}
+.node .t{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan)}
+.node .d{color:var(--muted);font-size:.92rem;margin-top:5px}
+.node.amber{border-left-color:var(--amber)}
+.node.amber .t{color:var(--amber)}
+.chain{
+  font-family:var(--mono);font-size:.82rem;color:var(--muted);line-height:2.1;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:22px;
+  overflow-x:auto;
+}
+.chain b{color:var(--cyan);font-weight:500}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+
+/* tables */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:13px 18px;text-align:left;border-bottom:1px solid var(--line)}
+th{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);background:var(--panel-2);font-weight:500;white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(61,220,255,.035)}
+td.mono{font-family:var(--mono);font-size:.83rem;color:var(--muted)}
+.yes{color:var(--green);font-weight:700}
+.no{color:#3d4c66}
+.part{color:var(--cyan)}
+th.ours,td.ours{background:rgba(61,220,255,.07)}
+th.ours{color:var(--cyan)}
+
+/* callout */
+.callout{
+  border:1px solid var(--cyan-dim);border-radius:9px;padding:26px 28px;margin-top:30px;
+  background:linear-gradient(140deg,rgba(61,220,255,.08),rgba(61,220,255,.02));
+}
+.callout .h{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:11px}
+.callout p{font-size:1.02rem}
+.callout .fine{color:var(--muted);font-size:.9rem;margin-top:10px}
+
+/* cards grid */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:24px;transition:.18s}
+.card:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.card .ix{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:.14em}
+.card h3{margin-top:9px;font-size:1.03rem}
+.card p{color:var(--muted);font-size:.9rem}
+.card ul{margin-top:12px;padding-left:17px;color:var(--muted);font-size:.87rem}
+.card li{margin-bottom:6px}
+
+/* timeline */
+.timeline{border-left:1px solid var(--line);padding-left:0;margin-top:10px;list-style:none}
+.timeline li{position:relative;padding:0 0 30px 30px}
+.timeline li::before{
+  content:"";position:absolute;left:-5px;top:8px;width:9px;height:9px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--cyan);
+}
+.timeline li:last-child{padding-bottom:0}
+.timeline .when{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.timeline h3{margin:5px 0 5px;font-size:1.02rem}
+.timeline p{color:var(--muted);font-size:.9rem}
+
+/* footer */
+footer{padding:56px 0 70px;color:var(--muted);font-size:.88rem}
+.fgrid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-end}
+.fmono{font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--cyan)}
+
+@media (max-width:860px){
+  .readout{grid-template-columns:1fr 1fr}
+  .stages,.two-col{grid-template-columns:1fr}
+  header{padding:70px 0 60px}
+  section{padding:64px 0}
+  .navlinks{
+    display:none;position:absolute;top:60px;left:0;right:0;flex-direction:column;gap:0;
+    background:var(--bg-2);border-bottom:1px solid var(--line);padding:8px 0;
+  }
+  .navlinks.open{display:flex}
+  .navlinks a{padding:12px 28px}
+  .menubtn{display:block}
+}
+</style>
+</head>
+<body>
+<div class="gridlines"></div>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="dot"></span>Bhumi-Drishti</a>
+    <button class="menubtn" id="menubtn" aria-label="Toggle menu">Menu</button>
+    <div class="navlinks" id="navlinks">
+      <a href="#mission">Mission</a>
+      <a href="#stages">Stages</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#research">Research</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#team">Team</a>
+    </div>
+  </div>
+</nav>
+
+<header id="top">
+  <div class="wrap">
+    <span class="tag"><span class="dot"></span>Stage 1 build validated · Stage 2 proposed</span>
+    <h1>Project Bhumi-Drishti
+      <span class="sub">A 1U CubeSat platform with on-board AI, LoRa telemetry and a Teensy flight computer.</span>
+    </h1>
+    <p class="lede">
+      A student-led effort to design, build and fly a 1U CubeSat-class platform — first as a
+      recoverable technology demonstration at 10–12 km, then as a research payload carrying
+      on-board AI inference into the stratosphere at 30–50 km.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#research">The novelty case</a>
+      <a class="btn" href="#architecture">System architecture</a>
+    </div>
+
+    <div class="readout">
+      <div><div class="k">Form factor</div><div class="v">1U</div><div class="n">100 × 100 × 113.5 mm</div></div>
+      <div><div class="k">Flight computer</div><div class="v">Teensy 4.1</div><div class="n">i.MX RT1062 · 600 MHz</div></div>
+      <div><div class="k">Target altitude</div><div class="v">30–50 km</div><div class="n">Stage 2 · stratosphere</div></div>
+      <div><div class="k">Telemetry</div><div class="v">433 MHz</div><div class="n">RYLR998 LoRa</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="mission">
+  <div class="wrap">
+    <div class="eyebrow">01 — Mission</div>
+    <h2>Engineering validation first. Research contribution second.</h2>
+    <div class="two-col">
+      <div>
+        <p class="intro" style="margin-bottom:0">
+          The project deliberately separates the two questions. Stage 1 answers <em>“does the hardware
+          survive and function in flight?”</em> Stage 2 answers <em>“does the combined AI + flight-MCU
+          payload produce new, publishable knowledge?”</em>
+        </p>
+      </div>
+      <div>
+        <p style="color:var(--muted)">
+          Keeping them separate protects the research goal. A sensor or radio failure at 10–12 km is a
+          cheap, recoverable lesson — not the loss of an expensive research flight. Stage 1 also builds
+          real flight heritage for the team's own hardware, which is exactly the low-cost heritage
+          argument the Stage 2 paper relies on.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="h">Central research claim</div>
+      <p>No published paper or prototype combines all five elements — a true 1U CubeSat frame, a Teensy
+      flight MCU, on-board Raspberry Pi AI inference, LoRa telemetry, and a 30–50 km balloon flight — in
+      a single payload.</p>
+      <p class="fine">Each element has separate flight heritage. The combination does not exist in the reviewed literature.</p>
+    </div>
+  </div>
+</section>
+
+<section id="stages">
+  <div class="wrap">
+    <div class="eyebrow">02 — Staged roadmap</div>
+    <h2>Two flights, two purposes</h2>
+    <p class="intro">A recoverable demonstration proves the platform. A stratospheric research flight then carries a payload nobody has flown before.</p>
+
+    <div class="stages">
+      <div class="stage">
+        <div class="num">Stage 1 · Technology demonstration</div>
+        <h3>Prove the platform in flight</h3>
+        <p>Validate the onboard electronics, power system, environmental sensors, long-range telemetry
+        and recovery mechanism, so the design can be trusted for the higher-altitude research flight.</p>
+        <ul class="spec">
+          <li><span class="lbl">Altitude</span><span class="val">10–12 km</span></li>
+          <li><span class="lbl">Lift</span><span class="val">Weather balloon</span></li>
+          <li><span class="lbl">Compute</span><span class="val">Teensy 4.1 only</span></li>
+          <li><span class="lbl">Budget</span><span class="val">₹40,000 – ₹50,000</span></li>
+          <li><span class="lbl">Duration</span><span class="val">4–6 months</span></li>
+          <li><span class="lbl">Funding</span><span class="val">Music Lab / Club funds</span></li>
+          <li><span class="lbl">Key output</span><span class="val">Recovered CubeSat + data</span></li>
+        </ul>
+      </div>
+
+      <div class="stage two">
+        <div class="num">Stage 2 · Research flight</div>
+        <h3>Fly on-board AI into the stratosphere</h3>
+        <p>Keep the validated platform and add a Raspberry Pi running TensorFlow Lite inference over a
+        live camera feed. The Teensy remains the dedicated flight MCU; the Pi is an independent,
+        non-critical AI payload.</p>
+        <ul class="spec">
+          <li><span class="lbl">Altitude</span><span class="val">30–50 km</span></li>
+          <li><span class="lbl">Lift</span><span class="val">Sounding balloon</span></li>
+          <li><span class="lbl">Compute</span><span class="val">Teensy 4.1 + Raspberry Pi</span></li>
+          <li><span class="lbl">New payload</span><span class="val">Camera + TFLite/YOLO</span></li>
+          <li><span class="lbl">Funding</span><span class="val">To be raised</span></li>
+          <li><span class="lbl">Duration</span><span class="val">Follows Stage 1</span></li>
+          <li><span class="lbl">Key output</span><span class="val">Conference paper + build log</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin-top:52px">Stage 1 success criteria</h3>
+    <p style="color:var(--muted);margin-bottom:18px;font-size:.94rem">Every goal maps to a measurable pass condition, so the outcome can be judged objectively.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:44px">#</th><th>Success criterion</th><th>Measured by</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">1</td><td>Altitude ≥ 10 km reached and logged</td><td class="mono">GPS + barometric altitude on SD card</td></tr>
+          <tr><td class="mono">2</td><td>Continuous environmental log for full flight</td><td class="mono">CSV completeness on recovered SD card</td></tr>
+          <tr><td class="mono">3</td><td>Telemetry received at ground station</td><td class="mono">LoRa packets logged at ≥ 10 km slant range</td></tr>
+          <tr><td class="mono">4</td><td>Power rails stable throughout flight</td><td class="mono">INA219 bus-voltage log, no brownout reset</td></tr>
+          <tr><td class="mono">5</td><td>Parachute deploys, payload recovered intact</td><td class="mono">Physical recovery + servo actuation log</td></tr>
+          <tr><td class="mono">6</td><td>Structure survives with no critical damage</td><td class="mono">Post-flight mechanical inspection</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="wrap">
+    <div class="eyebrow">03 — Architecture</div>
+    <h2>Two functional blocks, one flight computer</h2>
+    <p class="intro">
+      The Stage 1 avionics are organised around an Electrical Power System that generates and conditions
+      every voltage rail, and an I²C sensor array managed by a Teensy 4.1 through a PCA9548A multiplexer.
+      UART peripherals and analog temperature sensors attach directly to the Teensy.
+    </p>
+
+    <div class="two-col">
+      <div>
+        <h3>Power chain</h3>
+        <div class="chain">
+          <b>Solar panels</b> (4 × 6 V)<br>
+          &nbsp;&nbsp;↓ TP4056 charger<br>
+          &nbsp;&nbsp;↓ <b>4 × parallel LiPo</b> (3200 mAh)<br>
+          &nbsp;&nbsp;↓ 1S BMS + master switch<br>
+          &nbsp;&nbsp;↓ XL6009 boost → <b>5 V rail</b><br>
+          &nbsp;&nbsp;↓ dual AMS1117<br>
+          &nbsp;&nbsp;→ <b>3.3 V digital</b> · <b>3.3 V analog</b>
+        </div>
+        <div class="callout" style="margin-top:20px">
+          <div class="h">Design note — split grounds</div>
+          <p style="font-size:.95rem">Two AMS1117 regulators create independent DIGITAL_GND and ANALOG_GND domains,
+          joined at a single point through small 10 Ω resistors. This keeps switching noise off the analog
+          sensor readings (TMP36, INA219) — which matters for clean temperature and current data.</p>
+        </div>
+      </div>
+
+      <div>
+        <h3>Compute and data flow</h3>
+        <div class="flow">
+          <div class="node"><div class="t">I²C sensors</div><div class="d">BME280, MPU6500, LIS3MDL and 2 × INA219 attach to a PCA9548A 8-channel multiplexer — each device isolated on its own channel to avoid address clashes and bus loading.</div></div>
+          <div class="node"><div class="t">UART peripherals</div><div class="d">NEO-6M GPS on Serial1 (pins 0/1). RYLR998 LoRa on Serial2 (pins 7/8).</div></div>
+          <div class="node"><div class="t">Analog sensors</div><div class="d">3 × TMP36 read on Teensy pins A0–A2 — internal, external and battery temperature.</div></div>
+          <div class="node"><div class="t">Actuation</div><div class="d">A single SG90 servo on PWM pin 14 deploys the parachute.</div></div>
+          <div class="node"><div class="t">Storage</div><div class="d">Teensy 4.1 built-in microSD slot logs all telemetry as CSV — no external SD module or SPI wiring required.</div></div>
+          <div class="node amber"><div class="t">Stage 2 addition</div><div class="d">Raspberry Pi + camera runs TFLite inference and talks to the Teensy over serial/I²C, so a Pi crash never takes down flight control or telemetry. Spare pins 2, 4–6, 9–13, 15–17, 20–21, 24–41 are reserved for the link.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:52px">Telemetry record</h3>
+    <p style="color:var(--muted);margin-bottom:18px;font-size:.94rem">All data is written to the SD card as a single CSV, one row per sample.</p>
+    <div class="chain" style="margin-top:0">
+      timestamp_ms, pressure_hPa, temp_C, humidity_pct, mag_x_uT, mag_y_uT, mag_z_uT,
+      accel_x, accel_y, accel_z, gps_lat, gps_lon, gps_alt_m, gps_sats, vbat_mV, vsys_mV
+    </div>
+  </div>
+</section>
+
+<section id="hardware">
+  <div class="wrap">
+    <div class="eyebrow">04 — Hardware</div>
+    <h2>Every part, and what it does</h2>
+    <p class="intro">The Stage 1 bill of materials, grouped by subsystem. Full pin-by-pin wiring and capacitor values live in the team's separate wiring document.</p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="ix">EPS</div>
+        <h3>Power &amp; battery</h3>
+        <ul>
+          <li><span class="part">Solar panels (4 × 6 V)</span> — generate power, feed the charger</li>
+          <li><span class="part">1N5819 Schottky ×4</span> — block reverse current into panels</li>
+          <li><span class="part">LiPo 4 × 800 mAh</span> — 3200 mAh parallel pack</li>
+          <li><span class="part">TP4056</span> — safe solar battery charging</li>
+          <li><span class="part">1S BMS</span> — over-charge / discharge / current protection</li>
+          <li><span class="part">XL6009</span> — boosts 3.7–4.2 V to a steady 5 V rail</li>
+          <li><span class="part">AMS1117-3.3 ×2</span> — separate logic and sensor 3.3 V supplies</li>
+          <li><span class="part">INA219 ×2</span> — solar-side and system-side V/I monitoring</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ix">COMPUTE</div>
+        <h3>Flight computer</h3>
+        <ul>
+          <li><span class="part">Teensy 4.1</span> — the brain: reads sensors, runs flight logic, logs to SD, drives radio, GPS and servo</li>
+          <li><span class="part">PCA9548A</span> — splits one I²C bus into 8 channels</li>
+          <li><span class="part">microSD Class 10</span> — CSV flight log in the Teensy's built-in slot</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ix">SENSING</div>
+        <h3>Sensors</h3>
+        <ul>
+          <li><span class="part">BME280</span> — pressure, temperature, humidity (I²C)</li>
+          <li><span class="part">MPU6500</span> — 6-axis acceleration and rotation (I²C)</li>
+          <li><span class="part">LIS3MDL</span> — 3-axis magnetic field (I²C)</li>
+          <li><span class="part">TMP36 ×3</span> — internal, external, battery temperature (analog)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ix">NAV / COMMS</div>
+        <h3>Navigation &amp; telemetry</h3>
+        <ul>
+          <li><span class="part">NEO-6M GPS</span> — position, altitude and UTC over UART; also used to find the payload after landing</li>
+          <li><span class="part">RYLR998 LoRa (433 MHz)</span> — live telemetry via AT commands over UART</li>
+          <li><span class="part">433 MHz whip antenna</span> — kept clear of the frame and the GPS antenna</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ix">RECOVERY</div>
+        <h3>Recovery &amp; structure</h3>
+        <ul>
+          <li><span class="part">SG90 servo</span> — releases the parachute at apogee or on command</li>
+          <li><span class="part">1U frame</span> — 100 × 100 × 113.5 mm, survives ascent, burst and landing</li>
+          <li><span class="part">Status LEDs ×3</span> — power, transmit, error</li>
+          <li><span class="part">Reset button</span> — manual Teensy restart</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ix">PLANNED</div>
+        <h3>Flight-model additions</h3>
+        <p>Kapton patch heaters for thermal control, to keep the electronics warm at the very cold
+        temperatures of the higher Stage 2 flight. Not on the demo unit — to be added in a later revision.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:52px">Teensy 4.1 pin assignment</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Pin</th><th>Function</th><th>Connected to</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">0 (RX1)</td><td>UART1 RX</td><td class="mono">GPS NEO-6M TX</td></tr>
+          <tr><td class="mono">1 (TX1)</td><td>UART1 TX</td><td class="mono">GPS NEO-6M RX</td></tr>
+          <tr><td class="mono">3</td><td>Digital out</td><td class="mono">RYLR998 LoRa reset</td></tr>
+          <tr><td class="mono">7 (RX2)</td><td>UART2 RX</td><td class="mono">RYLR998 LoRa TXD</td></tr>
+          <tr><td class="mono">8 (TX2)</td><td>UART2 TX</td><td class="mono">RYLR998 LoRa RXD</td></tr>
+          <tr><td class="mono">14</td><td>PWM</td><td class="mono">Parachute servo signal</td></tr>
+          <tr><td class="mono">18 (SDA0)</td><td>I²C SDA</td><td class="mono">PCA9548A — all I²C sensors</td></tr>
+          <tr><td class="mono">19 (SCL0)</td><td>I²C SCL</td><td class="mono">PCA9548A — all I²C sensors</td></tr>
+          <tr><td class="mono">22</td><td>Digital out</td><td class="mono">Error LED</td></tr>
+          <tr><td class="mono">23</td><td>Digital out</td><td class="mono">Transmit LED</td></tr>
+          <tr><td class="mono">A0 / A1 / A2</td><td>Analog in</td><td class="mono">TMP36 ×3 — internal / external / battery</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="research">
+  <div class="wrap">
+    <div class="eyebrow">05 — Research</div>
+    <h2>The gap: nobody has combined all five</h2>
+    <p class="intro">
+      Before claiming the idea is new, we reviewed what others have built. Each project below did part of
+      what we want to do — a Teensy-brained CubeSat, a solar-powered Teensy at altitude, a Pi sending
+      images over LoRa, a Pi running edge AI. None did all of it together.
+    </p>
+
+    <div class="cards" style="margin-bottom:38px">
+      <div class="card">
+        <div class="ix">PRIOR WORK</div>
+        <h3>CubeSat body, Teensy brain</h3>
+        <p><b>Princeton TigerSats</b> built an open-source 1U frame with a Teensy as main computer — but no camera, AI or LoRa.
+        <b>IIA Bangalore</b> flew a 1U CubeSat to ~30 km in 2020 at −40 °C — but on an Arduino-class chip, with no camera or AI.</p>
+      </div>
+      <div class="card">
+        <div class="ix">PRIOR WORK</div>
+        <h3>Solar-powered Teensy at altitude</h3>
+        <p><b>Bazán Palacios (2022)</b> flew a Teensy on a small solar panel with INA219 monitoring. The panel gave
+        <em>more</em> power up high than at ground level and the battery was never needed — good evidence our
+        solar plan works. But power-only: no frame, camera or AI.</p>
+      </div>
+      <div class="card">
+        <div class="ix">PRIOR WORK</div>
+        <h3>Pi + camera over LoRa</h3>
+        <p><b>Dave Akerman's “Pi In The Sky”</b> reached ~42 km sending live pictures over LoRa — proving image
+        downlink works, but with the Pi doing everything alone. <b>Solid State Depot (2017 eclipse)</b> used a
+        Teensy only on the ground receiver, not as a flight computer.</p>
+      </div>
+      <div class="card">
+        <div class="ix">PRIOR WORK</div>
+        <h3>Pi running AI alone</h3>
+        <p><b>TFLite on a Pi</b> ran ~90% faster than the full framework. <b>YOLO on the smallest Pi</b> managed real-time
+        detection — on-board inference beats downlinking everything when the link is weak, exactly our case at
+        30–50 km. But all tested on the ground or in orbit, never on a balloon with a separate flight computer.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Element</th>
+            <th>TigerSats / IIA</th>
+            <th>Bazán (solar)</th>
+            <th>PITS / HAB Pi+LoRa</th>
+            <th>Pi + TFLite (ground AI)</th>
+            <th class="ours">Bhumi-Drishti</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1U CubeSat structure</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="ours yes">✓</td></tr>
+          <tr><td>Teensy flight MCU</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="ours yes">✓</td></tr>
+          <tr><td>Pi on-board AI</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="ours yes">✓</td></tr>
+          <tr><td>LoRa telemetry</td><td class="no">—</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="ours yes">✓</td></tr>
+          <tr><td>30–50 km balloon flight</td><td class="no">~</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="ours yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <div class="h">Novelty statement</div>
+      <p>The combination of on-board Pi AI inference + an independent Teensy flight MCU + LoRa + a full
+      sensor suite, inside a true 1U CubeSat frame, flown to 30–50 km, does not appear together in any
+      published paper or prototype found in this review.</p>
+      <p class="fine">A credible basis for a novel student research paper.</p>
+    </div>
+
+    <h3 style="margin-top:52px">What we still need to solve</h3>
+    <p style="color:var(--muted);margin-bottom:18px;font-size:.94rem">The open engineering questions before Stage 2 can be built.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:26%">Area</th><th>What we need to learn or do</th></tr></thead>
+        <tbody>
+          <tr><td class="part">Structure &amp; mechanical</td><td>Design the 1U frame, pick a material that survives ~−60 °C, handle launch vibration and landing shock.</td></tr>
+          <tr><td class="part">Pi ↔ Teensy split</td><td>A reliable link so that if the Pi crashes, telemetry and sensors keep working.</td></tr>
+          <tr><td class="part">On-board AI</td><td>Train and shrink a small model; measure speed and power draw in cold, low-pressure air.</td></tr>
+          <tr><td class="part">LoRa &amp; regulation</td><td>Confirm legal frequency and power limits in India, design the antenna, packetise images.</td></tr>
+          <tr><td class="part">Power</td><td>Battery chemistry below −40 °C, solar sizing, regulators for two computers at once.</td></tr>
+          <tr><td class="part">Environment &amp; permits</td><td>Burst/ascent modelling, GPS high-altitude limit, recovery tracking, launch permission.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:52px">Risk register</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Risk</th><th style="width:80px">Stage</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td>Power brownout in flight</td><td class="mono">1</td><td>Software voltage supervisor resets the Teensy below 3.05 V; INA219 monitoring; bulk decoupling.</td></tr>
+          <tr><td>Telemetry loss at range</td><td class="mono">1 / 2</td><td>LoRa link-budget analysis; antenna clearance zone; local SD logging as backup.</td></tr>
+          <tr><td>Parachute fails to deploy</td><td class="mono">1</td><td>Servo actuation logged; deploy at apogee and on command; ground-test the release mechanism.</td></tr>
+          <tr><td>GPS drops out above ~18 km</td><td class="mono">2</td><td>Use GPS with high-altitude flight-mode firmware; validate before flight.</td></tr>
+          <tr><td>Cold kills battery / electronics</td><td class="mono">2</td><td>Kapton patch heaters; sub −40 °C battery chemistry; conformal protection.</td></tr>
+          <tr><td>Pi crash takes down flight system</td><td class="mono">2</td><td>Independent Teensy MCU; robust serial/I²C handoff; Pi non-critical to flight control.</td></tr>
+          <tr><td>Regulatory / airspace refusal</td><td class="mono">1 / 2</td><td>Confirm LoRa frequency and power limits, secure launch permission early.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="wrap">
+    <div class="eyebrow">06 — After Stage 2</div>
+    <h2>Publish first, then four open paths</h2>
+    <p class="intro">
+      Everything depends on having a published result. As far as our review shows, no one has flown a 1U
+      CubeSat carrying a Teensy flight computer and a Raspberry Pi running on-board AI to 30–50 km.
+      Publishing puts our name on it first — after that, four paths are open, and we can follow more than
+      one at a time.
+    </p>
+
+    <ul class="timeline">
+      <li>
+        <div class="when">Right away</div>
+        <h3>Publish the research</h3>
+        <p>Write up the build and flight data with Dr. Sen's review, submit to a student research conference,
+        post a dated preprint, and open the wiring notes, code, AI model and flight data so others can repeat it.</p>
+      </li>
+      <li>
+        <div class="when">Right away · Path D</div>
+        <h3>Run paid workshops</h3>
+        <p>A “What is a CubeSat?” session plus a hands-on kit, starting inside our own college through the club
+        and Music Lab, then offered to nearby colleges and schools. Funds the next flight without depending
+        only on club money.</p>
+      </li>
+      <li>
+        <div class="when">Near term · Path C</div>
+        <h3>Enter competitions</h3>
+        <p>CanSat India / Model Rocketry Student Competition — run by IN-SPACe, ISRO and the Astronautical
+        Society of India; its 2025 final at Kushinagar drew 67 teams and 500+ students. Adapt the existing
+        CubeSat to the rules rather than starting from scratch.</p>
+      </li>
+      <li>
+        <div class="when">6–18 months · Path A</div>
+        <h3>Team up with a university lab</h3>
+        <p>With the paper in hand, ask Dr. Sen for introductions to IIT, IIST or IIA Bangalore groups. Offer to
+        collaborate on the next version — attitude control, for example — with credit agreed early.</p>
+      </li>
+      <li>
+        <div class="when">Long term · Path B</div>
+        <h3>Apply through IN-SPACe / ISRO</h3>
+        <p>The ISRO Student Satellite Programme gives approved college teams mentoring and even a launch. By
+        early 2026 IN-SPACe had approved 17 student satellites and payloads, 11 already launched. Our balloon
+        flights become the proof the design works.</p>
+      </li>
+    </ul>
+
+    <div class="callout">
+      <div class="h">Where this leads</div>
+      <p>The long-term goal is to turn this design into a real 1U CubeSat launched into orbit — using balloon
+      flights as low-cost proof that it works, flying several times for solid results, and adding attitude
+      control as the bridge from a balloon demo to a true satellite.</p>
+    </div>
+  </div>
+</section>
+
+<section id="team">
+  <div class="wrap">
+    <div class="eyebrow">07 — Team</div>
+    <h2>Who is building this</h2>
+    <div class="two-col">
+      <div>
+        <p style="color:var(--muted)">
+          Bhumi-Drishti is built by a student team working under faculty supervision, funded through
+          Music Lab / Club funds. We are looking for collaborators, mentors and sponsors for the Stage 2
+          research flight.
+        </p>
+        <div class="cta" style="margin-top:26px">
+          <a class="btn primary" href="mailto:shamshubhamhi@gmail.com">Get in touch</a>
+        </div>
+      </div>
+      <div>
+        <ul class="spec" style="border-top:none;margin-top:0;padding-top:0">
+          <li><span class="lbl">Team</span><span class="val">Bhumi-Drishti CubeSat Team</span></li>
+          <li><span class="lbl">Faculty supervisor</span><span class="val">Dr. Arijit Sen</span></li>
+          <li><span class="lbl">Funding</span><span class="val">Music Lab / Club funds</span></li>
+          <li><span class="lbl">Stage 1 status</span><span class="val" style="color:var(--green)">Build validated</span></li>
+          <li><span class="lbl">Stage 2 status</span><span class="val" style="color:var(--amber)">Proposed</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap fgrid">
+    <div>
+      <div class="fmono">Project Bhumi-Drishti</div>
+      <p style="margin-top:8px">1U CubeSat · Teensy 4.1 · On-board AI · LoRa telemetry</p>
+    </div>
+    <div style="text-align:right">
+      <p>Prepared for review by Dr. Arijit Sen</p>
+      <p style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--dim)">Stage 1 build validated · Stage 2 proposed</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+document.getElementById('menubtn').addEventListener('click',function(){
+  document.getElementById('navlinks').classList.toggle('open');
+});
+document.querySelectorAll('#navlinks a').forEach(function(a){
+  a.addEventListener('click',function(){document.getElementById('navlinks').classList.remove('open');});
+});
+</script>
+</body>
+</html>
